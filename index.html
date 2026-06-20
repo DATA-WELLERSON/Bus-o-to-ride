@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Busão to Ride — Rio de Janeiro</title>
+<style>
+  :root{
+    --vermelho:#e23b3b; --laranja:#f08a24; --amarelo:#f2c83f; --verde:#3fae5a;
+    --azul:#2f7fd4; --roxo:#8e44ad; --preto:#2c2c2c; --branco:#ececec;
+    --curinga:#7d7d7d; --cinza:#b9b2a6;
+    --p0:#00897b; --p1:#d81b60;
+    /* tema dinâmico (muda com o jogador da vez) */
+    --bg:#07211e; --panel:#0e3b35; --border:#1c6b60; --inset:#082722;
+    --acc1:#06201c; --acc2:#0f5347; --map1:#11574c; --map2:#082722;
+    --btn:#0c3029; --btnh:#124137; --strokeink:#082722;
+    --ink:#eaf2f8; --muted:#bcd2cc;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;background:var(--bg);color:var(--ink);overflow:hidden}
+  .game{position:relative;width:100vw;height:100vh;overflow:hidden;background:radial-gradient(circle at 60% 55%,var(--map1),var(--map2));transition:background .35s}
+  #map{position:absolute;inset:0;width:100%;height:100%;display:block}
+
+  /* barra superior */
+  .topbar{position:absolute;top:0;left:0;right:0;display:flex;justify-content:space-between;align-items:center;
+    padding:8px 16px;z-index:5;pointer-events:none;background:linear-gradient(180deg,rgba(0,0,0,.5),transparent)}
+  .topbar .logo{font-weight:800;font-size:18px;text-shadow:0 1px 4px #000}
+  .topbar .logo small{font-weight:500;color:var(--muted)}
+  .topbar .phase{font-size:12px;color:#fff;background:#0007;padding:3px 10px;border-radius:12px}
+  .topbar .topright{display:flex;align-items:center;gap:10px;pointer-events:auto}
+  .newgamebtn{pointer-events:auto;border:1px solid #ffffff44;background:rgba(0,0,0,.55);color:#fff;border-radius:10px;padding:5px 11px;font-size:12px;font-weight:700;cursor:pointer;backdrop-filter:blur(4px)}
+  .newgamebtn:hover{background:rgba(0,0,0,.8)}
+
+  .glass{background:rgba(0,0,0,.5);border:1px solid #ffffff22;border-radius:12px;padding:8px;backdrop-filter:blur(4px);box-shadow:0 4px 14px #0006}
+  .boxtitle{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:5px}
+
+  /* jogadores (esquerda) */
+  .players{position:absolute;left:12px;top:52px;display:flex;flex-direction:column;gap:8px;z-index:6}
+  .pcard{display:flex;align-items:center;gap:8px;width:190px;padding:6px 10px 6px 7px;border-radius:12px;
+    background:rgba(0,0,0,.5);border:1px solid #ffffff22;backdrop-filter:blur(4px);box-shadow:0 4px 12px #0005;
+    border-left:6px solid #888;transition:transform .15s,box-shadow .15s,opacity .15s;opacity:.65}
+  .pcard.active{opacity:1;transform:scale(1.05);box-shadow:0 0 0 2px #ffffffcc,0 6px 16px #0007}
+  .pcard .av{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;background:#ffffff22;flex:none}
+  .pcard .who{flex:1;min-width:0}
+  .pcard .who b{display:block;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .pcard .who small{font-size:11px;color:var(--muted)}
+  .pcard .pts{font-size:22px;font-weight:800;line-height:1}
+
+  /* mercado de cartas (direita) */
+  .rightbar{position:absolute;right:12px;top:52px;display:flex;flex-direction:column;align-items:center;gap:8px;z-index:6}
+  .ticketbtn{border:1px solid #ffffff33;background:rgba(0,0,0,.55);color:#fff;border-radius:10px;padding:8px 10px;font-size:13px;font-weight:700;cursor:pointer;backdrop-filter:blur(4px);box-shadow:0 4px 12px #0005}
+  .ticketbtn:hover{background:rgba(0,0,0,.78)}
+  .ticketbtn:disabled{opacity:.4;cursor:not-allowed}
+  .market{display:flex;flex-direction:column;gap:7px}
+  .mcard{position:relative;width:48px;height:66px;border-radius:8px;border:2px solid #0007;cursor:pointer;overflow:hidden;background:#fff;transition:transform .1s;box-shadow:0 3px 8px #0006}
+  .mcard:hover{transform:translateX(-5px)}
+  .mcard.empty{background:rgba(0,0,0,.3);cursor:default;border-style:dashed}
+  .cardart{position:absolute;inset:0;width:100%;height:100%;display:block}
+  .cardimg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  .deck{width:48px;height:66px;border-radius:8px;border:2px dashed #ffffff55;background:rgba(0,0,0,.45);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;text-align:center;font-size:11px;font-weight:700;line-height:1.2}
+
+  /* meus bilhetes + diário (canto inferior esquerdo) */
+  .myinfo{position:absolute;left:12px;bottom:12px;width:212px;display:flex;flex-direction:column;gap:8px;z-index:6}
+  .myinfo .log{height:80px}
+  .myinfo #tickets{max-height:150px;overflow:auto}
+  .log{overflow:auto;font-size:12px;line-height:1.45}
+  .log div{margin-bottom:2px;color:#dfeaf2}
+  .ticket{font-size:12px;padding:4px 6px;border-radius:6px;background:#ffffff14;margin-bottom:4px;display:flex;justify-content:space-between;gap:8px}
+  .ticket.ok{border-left:4px solid var(--verde)}
+  .ticket.no{border-left:4px solid var(--vermelho)}
+  .ticket .pts{font-weight:700}
+
+  /* mão + status (rodapé central) */
+  .handbar{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);z-index:6;
+    display:flex;flex-direction:column;align-items:center;gap:7px;max-width:64vw}
+  .turn{display:flex;align-items:center;gap:8px;font-size:16px;font-weight:700;
+    background:rgba(0,0,0,.55);padding:5px 16px;border-radius:14px;backdrop-filter:blur(4px);
+    text-shadow:0 1px 3px #000;box-shadow:0 4px 12px #0005}
+  #turnInfo{font-weight:500;font-size:13px;color:var(--muted)}
+  .dot{display:inline-flex;align-items:center}
+  .hand{display:flex;gap:7px;flex-wrap:wrap;justify-content:center}
+  .hcard{position:relative;width:50px;height:70px}
+  .hcard .clip{position:absolute;inset:0;border-radius:9px;border:2px solid #0007;overflow:hidden;box-shadow:0 4px 10px #0006}
+  .hcard .cnt{position:absolute;top:-8px;right:-8px;z-index:2;background:#141414;color:#fff;border:2px solid #fff;border-radius:50%;
+    min-width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:12px;padding:0 3px}
+  .hint{color:#fff;font-size:12px;text-shadow:0 1px 3px #000;min-height:14px}
+
+  /* modal */
+  .overlay{position:fixed;inset:0;background:#000a;display:none;align-items:center;justify-content:center;z-index:50}
+  .modal{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:20px;max-width:420px;width:90%}
+  .modal h3{margin:0 0 10px}
+  .modal button{display:block;width:100%;margin-top:8px;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--btn);color:#fff;cursor:pointer;font-size:14px}
+  .modal button:hover{background:var(--btnh)}
+  .modal .cancel{background:transparent;border-color:#444;color:#aaa}
+  .citylabel{font-size:11px;fill:#fff;font-weight:600;paint-order:stroke;stroke:#000;stroke-width:3px;stroke-opacity:.55}
+  .nodecircle{cursor:default}
+  .resultline{font-size:14px;padding:3px 0}
+  .badge{font-size:11px;background:var(--border);padding:2px 7px;border-radius:10px;color:#eaf2f8;margin-left:6px}
+
+  @media (max-width:760px){
+    .topbar .logo small{display:none}
+    .topbar .logo{font-size:15px}
+    .players{top:44px}
+    .pcard{width:118px;padding:4px 7px 4px 5px;gap:6px}
+    .pcard .av{width:24px;height:24px;font-size:13px}
+    .pcard .who b{font-size:11px}.pcard .who small{font-size:10px}
+    .pcard .pts{font-size:16px}
+    .myinfo{width:150px}
+    .myinfo .log{height:54px}
+    .hcard{width:38px;height:54px}
+    .mcard,.deck{width:40px;height:56px}
+    .ticketbtn{padding:6px 8px;font-size:11px}
+    .handbar{max-width:80vw}
+  }
+</style>
+</head>
+<body>
+<div class="game">
+  <svg id="map" viewBox="-180 -10 1360 680" preserveAspectRatio="xMidYMid meet" aria-label="Mapa do Rio"></svg>
+
+  <!-- barra superior -->
+  <div class="topbar">
+    <span class="logo">🚌 Busão to Ride <small>· Rio de Janeiro</small></span>
+    <span class="topright">
+      <button class="newgamebtn" id="btnNew">🔄 Novo jogo</button>
+      <span class="phase" id="phase"></span>
+    </span>
+  </div>
+
+  <!-- jogadores (esquerda) -->
+  <div class="players" id="scores"></div>
+
+  <!-- mercado de cartas (direita) -->
+  <div class="rightbar">
+    <button class="ticketbtn" id="btnTickets">🎫 Bilhetes</button>
+    <div class="market" id="market"></div>
+  </div>
+
+  <!-- meus bilhetes + diário (canto inferior esquerdo) -->
+  <div class="myinfo">
+    <div class="glass"><div class="boxtitle">🎫 Meus bilhetes</div><div id="tickets"></div></div>
+    <div class="glass"><div class="boxtitle">📻 Diário de bordo</div><div class="log" id="log"></div></div>
+  </div>
+
+  <!-- mão + status (rodapé central) -->
+  <div class="handbar">
+    <div class="turn"><span class="dot" id="turnDot"></span><span id="turnName"></span><span id="turnInfo"></span></div>
+    <div class="hand" id="hand"></div>
+    <div class="hint" id="actHint"></div>
+  </div>
+</div>
+
+<div class="overlay" id="overlay"><div class="modal" id="modal"></div></div>
+
+<script>
+/* ============================ DADOS DO JOGO ============================ */
+const COLORS = ["vermelho","laranja","amarelo","verde","azul","roxo","preto","branco"];
+const HEX = {vermelho:"#e23b3b",laranja:"#f08a24",amarelo:"#f2c83f",verde:"#3fae5a",
+  azul:"#2f7fd4",roxo:"#8e44ad",preto:"#2c2c2c",branco:"#ececec",cinza:"#b9b2a6",curinga:"#7d7d7d"};
+
+const CITIES = {
+  "Sepetiba":[50,350],"Santa Cruz":[120,270],"Guaratiba":[95,460],
+  "Campo Grande":[215,330],"Bangu":[285,235],"Realengo":[345,300],
+  "Deodoro":[385,200],"Recreio":[255,512],"Barra":[400,498],
+  "Taquara":[415,415],"Jacarepaguá":[490,365],"Freguesia":[540,425],
+  "Pavuna":[480,150],"Madureira":[490,295],"Cascadura":[575,250],
+  "Méier":[625,315],"Penha":[645,150],"Bonsucesso":[720,195],
+  "Ilha do Gov.":[805,132],"São Cristóvão":[745,275],"Vila Isabel":[650,365],
+  "Maracanã":[700,320],"Tijuca":[705,410],"São Conrado":[585,508],
+  "Gávea":[665,485],"Centro":[835,315],
+  "Lapa":[805,375],"Santa Teresa":[765,420],"Flamengo":[875,400],
+  "Botafogo":[905,455],"Leblon":[755,516],
+  "Ipanema":[855,516],"Copacabana":[940,502]
+};
+// espalha os bairros a partir do centro (mais distância entre eles)
+const MAP_SPREAD=1.25, MAP_CX=500, MAP_CY=320;
+for(const k in CITIES){const c=CITIES[k];
+  CITIES[k]=[Math.round(MAP_CX+(c[0]-MAP_CX)*MAP_SPREAD), Math.round(MAP_CY+(c[1]-MAP_CY)*MAP_SPREAD)];}
+
+// rotas: [cidadeA, cidadeB, cor, comprimento]   (pares repetidos = pistas paralelas)
+const ROUTES = [
+  // Zona Oeste
+  ["Sepetiba","Santa Cruz","cinza",1],
+  ["Sepetiba","Guaratiba","amarelo",1],
+  ["Santa Cruz","Campo Grande","cinza",2],
+  ["Guaratiba","Campo Grande","verde",2],
+  ["Guaratiba","Recreio","preto",3],
+  ["Campo Grande","Bangu","cinza",1],
+  ["Campo Grande","Realengo","verde",1],
+  ["Campo Grande","Recreio","amarelo",3],
+  ["Bangu","Realengo","branco",1],
+  ["Bangu","Deodoro","laranja",2],
+  ["Realengo","Deodoro","cinza",1],
+  ["Realengo","Jacarepaguá","amarelo",2],
+  ["Deodoro","Pavuna","laranja",2],
+  ["Deodoro","Madureira","verde",2],
+  // Barra / Jacarepaguá
+  ["Recreio","Barra","cinza",1],
+  ["Barra","Taquara","azul",2],
+  ["Taquara","Jacarepaguá","verde",1],
+  ["Taquara","Freguesia","cinza",1],
+  ["Jacarepaguá","Freguesia","amarelo",1],
+  ["Jacarepaguá","Madureira","vermelho",2],
+  ["Barra","São Conrado","amarelo",3],
+  ["São Conrado","Gávea","roxo",1],
+  // Zona Norte
+  ["Madureira","Pavuna","cinza",1],
+  ["Madureira","Cascadura","cinza",1],
+  ["Madureira","Méier","amarelo",2],
+  ["Cascadura","Méier","branco",1],
+  ["Pavuna","Penha","roxo",2],
+  ["Penha","Bonsucesso","cinza",1],
+  ["Penha","Ilha do Gov.","branco",2],
+  ["Bonsucesso","Ilha do Gov.","amarelo",1],
+  ["Bonsucesso","São Cristóvão","azul",2],
+  ["Ilha do Gov.","Centro","laranja",3],
+  ["São Cristóvão","Centro","verde",1],
+  ["São Cristóvão","Maracanã","branco",1],
+  // Centro do mapa
+  ["Méier","Maracanã","verde",1],
+  ["Méier","Vila Isabel","roxo",2],
+  ["Vila Isabel","Maracanã","cinza",1],
+  ["Vila Isabel","Tijuca","branco",1],
+  ["Maracanã","Tijuca","laranja",1],
+  ["Maracanã","Centro","roxo",2],
+  ["Freguesia","Tijuca","laranja",3],
+  ["Tijuca","Centro","azul",2],
+  ["Tijuca","Santa Teresa","amarelo",2],
+  ["Tijuca","Gávea","preto",2],
+  // Zona Sul
+  ["Gávea","Leblon","roxo",1],
+  ["Santa Teresa","Gávea","azul",2],
+  ["Santa Teresa","Lapa","cinza",1],
+  ["Lapa","Centro","cinza",1],
+  ["Lapa","Flamengo","roxo",2],
+  ["Centro","Flamengo","azul",2],
+  ["Flamengo","Botafogo","cinza",1],
+  ["Botafogo","Copacabana","preto",1],
+  ["Botafogo","Ipanema","verde",2],
+  ["Leblon","Ipanema","branco",1],
+  ["Ipanema","Copacabana","cinza",1]
+].map((r,i)=>({id:i,a:r[0],b:r[1],color:r[2],len:r[3],owner:null}));
+
+const TICKETS = [
+  ["Santa Cruz","Copacabana",21],["Campo Grande","Centro",16],["Bangu","Botafogo",13],
+  ["Recreio","Penha",15],["Barra","Centro",11],["Jacarepaguá","Ipanema",10],
+  ["Madureira","Leblon",12],["Penha","Gávea",12],["Ilha do Gov.","Copacabana",14],
+  ["Méier","Ipanema",9],["Maracanã","Barra",9],["Tijuca","Recreio",11],
+  ["São Cristóvão","Leblon",9],["Santa Cruz","Tijuca",14],["Campo Grande","Ipanema",18],
+  ["São Conrado","Centro",12],["Copacabana","Campo Grande",20],["Leblon","Pavuna",14],
+  ["Santa Teresa","Recreio",14],["Bonsucesso","Leblon",13],["Freguesia","Copacabana",12],
+  ["Sepetiba","Ipanema",22],["Vila Isabel","Barra",10],["Deodoro","Copacabana",18]
+].map((t,i)=>({id:i,from:t[0],to:t[1],pts:t[2]}));
+
+const LEN_PTS = {1:1,2:2,3:4,4:7,5:10,6:15};
+const PCOLORS = ["#00897b","#d81b60"];
+const PNAMES = ["Linha Verde","Linha Rosa"];
+
+// paleta do tema que muda conforme o jogador da vez
+const THEME = {
+  0:{bg:"#07211e",panel:"#0e3b35",border:"#1c6b60",inset:"#082722",acc1:"#06201c",acc2:"#0f5347",map1:"#11574c",map2:"#082722",btn:"#0c3029",btnh:"#124137",strokeink:"#082722"},
+  1:{bg:"#2a0716",panel:"#45102a",border:"#7d2148",inset:"#2e0a1a",acc1:"#220512",acc2:"#7a1c45",map1:"#7a2046",map2:"#2e0a1a",btn:"#3a0e22",btnh:"#4d1430",strokeink:"#2e0a1a"}
+};
+let TH = THEME[0];
+function applyTheme(pid){
+  TH = THEME[pid] || THEME[0];
+  const r = document.documentElement.style;
+  Object.entries(TH).forEach(([k,v])=>r.setProperty("--"+k,v));
+}
+
+/* ============================ ESTADO ============================ */
+let S;
+function newDeck(){
+  const d=[];
+  COLORS.forEach(c=>{for(let i=0;i<12;i++)d.push(c);});
+  for(let i=0;i<14;i++)d.push("curinga");
+  // embaralha
+  for(let i=d.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[d[i],d[j]]=[d[j],d[i]];}
+  return d;
+}
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+
+const SAVE_KEY="busao_to_ride_save_v6";
+function saveState(){
+  try{ localStorage.setItem(SAVE_KEY, JSON.stringify({S, owners:ROUTES.map(r=>r.owner)})); }
+  catch(e){}
+}
+function loadState(){
+  try{
+    const raw=localStorage.getItem(SAVE_KEY); if(!raw)return false;
+    const data=JSON.parse(raw); if(!data||!data.S)return false;
+    S=data.S;
+    ROUTES.forEach((r,i)=>r.owner = (data.owners && data.owners[i]!=null) ? data.owners[i] : null);
+    return true;
+  }catch(e){ return false; }
+}
+
+// começa uma partida nova (do zero); vsAI=true → Linha Rosa é a Máquina
+function startNewGame(vsAI){
+  const deck=newDeck();
+  const ticketDeck=shuffle(TICKETS.map(t=>t.id));
+  const players=[0,1].map(i=>({
+    name:PNAMES[i],color:PCOLORS[i],buses:30,
+    cards:Object.fromEntries([...COLORS,"curinga"].map(c=>[c,0])),
+    tickets:[],score:0
+  }));
+  // mão inicial: 4 cartas
+  players.forEach(p=>{for(let k=0;k<4;k++)p.cards[deck.pop()]++;});
+  // bilhetes iniciais: 2 cada
+  players.forEach(p=>{p.tickets.push(ticketDeck.pop(),ticketDeck.pop());});
+  const market=[];for(let k=0;k<5;k++)market.push(deck.pop());
+  S={players,current:0,deck,discard:[],market,ticketDeck,logLines:[],aiPlayers:[false,!!vsAI],
+     drawnThisTurn:0,actionLocked:null,lastRound:false,triggerIdx:null,over:false};
+  ROUTES.forEach(r=>r.owner=null);
+  fixMarketLocos();
+  log(`Partida iniciada! ${vsAI?"Você (Linha Verde) vs Máquina 🤖":"2 jogadores"}.`,"#9fb6c7");
+  renderAll();
+}
+
+// escolhe o modo de jogo (usado no início e no botão "Novo jogo")
+function chooseMode(){
+  openModal(`<h3>🚌 Busão to Ride</h3>
+    <p style="color:#9fb6c7;font-size:13px">Como você quer jogar?</p>
+    <button id="mAI">🤖 1 jogador &nbsp;vs&nbsp; Máquina</button>
+    <button id="m2" class="cancel">👥 2 jogadores (mesmo PC)</button>`);
+  modalEl().querySelector("#mAI").onclick=()=>{closeModal();startNewGame(true);};
+  modalEl().querySelector("#m2").onclick=()=>{closeModal();startNewGame(false);};
+}
+
+// carrega a partida salva; se não houver, pergunta o modo
+function init(){
+  if(loadState()){
+    renderAll();
+    if(S.over) showResults(); else maybeAI();
+  }else{
+    chooseMode();
+  }
+}
+
+/* ============================ REGRAS / AÇÕES ============================ */
+function cur(){return S.players[S.current];}
+
+function fixMarketLocos(){
+  // se 3+ curingas no mercado, descarta e redistribui (regra clássica)
+  let guard=0;
+  while(S.market.filter(c=>c==="curinga").length>=3 && S.deck.length+S.discard.length>=5 && guard<10){
+    S.discard.push(...S.market); S.market=[];
+    for(let k=0;k<5;k++)S.market.push(drawFromDeck());
+    guard++;
+  }
+}
+function drawFromDeck(){
+  if(S.deck.length===0){ S.deck=shuffle(S.discard); S.discard=[]; }
+  if(S.deck.length===0) return null;
+  return S.deck.pop();
+}
+
+function takeMarket(i){
+  if(S.over) return;
+  if(S.aiPlayers&&S.aiPlayers[S.current]&&!AI_ACTING) return;
+  if(S.actionLocked==="claim"||S.actionLocked==="ticket") return;
+  const c=S.market[i]; if(c==null) return;
+  if(c==="curinga"){
+    if(S.drawnThisTurn>0){ flashHint("Não dá pra pegar 🚌 visível como 2ª carta."); return; }
+    cur().cards.curinga++; S.market[i]=drawFromDeck(); fixMarketLocos();
+    log(`${cur().name} pegou um 🚌 curinga (visível).`,cur().color);
+    S.drawnThisTurn=2; endDrawIfDone(); renderAll(); return;
+  }
+  cur().cards[c]++; S.market[i]=drawFromDeck();
+  log(`${cur().name} pegou carta ${c}.`,cur().color);
+  S.drawnThisTurn++; S.actionLocked="draw"; fixMarketLocos();
+  endDrawIfDone(); renderAll();
+}
+function takeDeck(){
+  if(S.over) return;
+  if(S.aiPlayers&&S.aiPlayers[S.current]&&!AI_ACTING) return;
+  if(S.actionLocked==="claim"||S.actionLocked==="ticket") return;
+  const c=drawFromDeck(); if(c==null){flashHint("Sem cartas no monte.");return;}
+  cur().cards[c]++;
+  log(`${cur().name} comprou uma carta do monte.`,cur().color);
+  S.drawnThisTurn++; S.actionLocked="draw";
+  endDrawIfDone(); renderAll();
+}
+function endDrawIfDone(){ if(S.drawnThisTurn>=2) endTurn(); }
+
+function ticketAction(){
+  if(S.over) return;
+  if(S.aiPlayers&&S.aiPlayers[S.current]&&!AI_ACTING) return;
+  if(S.actionLocked) {flashHint("Você já iniciou outra ação neste turno.");return;}
+  if(S.ticketDeck.length===0){flashHint("Acabaram os bilhetes.");return;}
+  const drawn=[]; for(let k=0;k<3 && S.ticketDeck.length;k++)drawn.push(S.ticketDeck.pop());
+  S.actionLocked="ticket";
+  chooseTickets(drawn,[]);
+}
+function chooseTickets(pool,kept){
+  const p=cur();
+  let html=`<h3>🎫 Bilhetes de destino</h3><p style="color:#9fb6c7;font-size:13px">Marque os que quer guardar (mínimo 1). Cumprido = +pontos, não cumprido = −pontos no fim.</p>`;
+  pool.forEach(id=>{const t=TICKETS[id];
+    html+=`<button data-id="${id}">${t.from} → ${t.to} <b>(${t.pts} pts)</b></button>`;});
+  html+=`<button class="cancel" id="ticketDone">Confirmar (${kept.length} selecionado/s)</button>`;
+  openModal(html);
+  pool.forEach(id=>{
+    modalEl().querySelector(`[data-id="${id}"]`).onclick=(e)=>{
+      const b=e.currentTarget;
+      if(kept.includes(id)){kept=kept.filter(x=>x!==id);b.style.background="var(--btn)";}
+      else{kept.push(id);b.style.background="#1d6b3a";}
+      modalEl().querySelector("#ticketDone").textContent=`Confirmar (${kept.length} selecionado/s)`;
+    };
+  });
+  modalEl().querySelector("#ticketDone").onclick=()=>{
+    if(kept.length<1){flashModal("Guarde pelo menos 1 bilhete.");return;}
+    p.tickets.push(...kept);
+    pool.filter(id=>!kept.includes(id)).forEach(id=>S.ticketDeck.unshift(id));
+    log(`${p.name} guardou ${kept.length} bilhete(s).`,p.color);
+    closeModal(); endTurn(); renderAll();
+  };
+}
+
+/* ---- conquistar rota ---- */
+function clickRoute(r){
+  if(S.over) return;
+  if(S.aiPlayers&&S.aiPlayers[S.current]&&!AI_ACTING) return;
+  if(r.owner!==null){flashHint("Rota já conquistada.");return;}
+  if(S.actionLocked){flashHint("Você já iniciou outra ação neste turno.");return;}
+  const p=cur();
+  if(p.buses<r.len){flashHint("Ônibus insuficientes na garagem.");return;}
+  const options=payOptions(p,r);
+  if(options.length===0){flashHint(`Faltam cartas para ${r.a}–${r.b} (${r.len} ${r.color}).`);return;}
+  let html=`<h3>Conquistar ${r.a} → ${r.b}</h3><p style="color:#9fb6c7;font-size:13px">Rota ${r.color}, tamanho ${r.len}. Escolha como pagar:</p>`;
+  options.forEach((o,idx)=>{
+    html+=`<button data-i="${idx}">${o.label}</button>`;});
+  html+=`<button class="cancel" id="cancelClaim">Cancelar</button>`;
+  openModal(html);
+  options.forEach((o,idx)=>{modalEl().querySelector(`[data-i="${idx}"]`).onclick=()=>{payRoute(r,o);};});
+  modalEl().querySelector("#cancelClaim").onclick=closeModal;
+}
+function payOptions(p,r){
+  const opts=[];
+  const cand = r.color==="cinza" ? COLORS : [r.color];
+  cand.forEach(col=>{
+    const have=p.cards[col], loco=p.cards.curinga;
+    if(have+loco>=r.len){
+      const useCol=Math.min(have,r.len), useLoco=r.len-useCol;
+      opts.push({color:col,useCol,useLoco,
+        label:`${useCol>0?useCol+" "+col:""}${useCol>0&&useLoco>0?" + ":""}${useLoco>0?useLoco+" 🚌":""}`});
+    }
+  });
+  // opção só curinga (caso ainda não listada)
+  if(p.cards.curinga>=r.len && !opts.some(o=>o.useLoco===r.len))
+    opts.push({color:"curinga",useCol:0,useLoco:r.len,label:`${r.len} 🚌 (curinga)`});
+  return opts;
+}
+function payRoute(r,o){
+  const p=cur();
+  if(o.useCol>0)p.cards[o.color]-=o.useCol;
+  p.cards.curinga-=o.useLoco;
+  for(let k=0;k<o.useCol;k++)S.discard.push(o.color);
+  for(let k=0;k<o.useLoco;k++)S.discard.push("curinga");
+  r.owner=S.current; p.buses-=r.len;
+  const pts=LEN_PTS[r.len]; p.score+=pts;
+  log(`${p.name} conquistou ${r.a}–${r.b} (+${pts} pts).`,p.color);
+  closeModal();
+  endTurn(); renderAll();
+}
+
+/* ---- fim de turno / fim de jogo ---- */
+function endTurn(){
+  const p=cur();
+  if(!S.lastRound && p.buses<=2){
+    S.lastRound=true; S.triggerIdx=S.current;
+    log(`⚠️ ${p.name} ficou com poucos ônibus — última rodada!`,"#f2c83f");
+  }
+  S.drawnThisTurn=0; S.actionLocked=null;
+  const next=(S.current+1)%S.players.length;
+  if(S.lastRound && next===S.triggerIdx){ finish(); return; }
+  S.current=next;
+  renderAll();
+  maybeAI();
+}
+
+function connected(pid,from,to){
+  const adj={};
+  ROUTES.filter(r=>r.owner===pid).forEach(r=>{
+    (adj[r.a]=adj[r.a]||[]).push(r.b);
+    (adj[r.b]=adj[r.b]||[]).push(r.a);
+  });
+  const seen=new Set([from]),q=[from];
+  while(q.length){const n=q.pop(); if(n===to)return true;
+    (adj[n]||[]).forEach(m=>{if(!seen.has(m)){seen.add(m);q.push(m);}});}
+  return false;
+}
+function finish(){
+  S.over=true;
+  S.players.forEach((p,pid)=>{
+    p.tickets.forEach(id=>{const t=TICKETS[id];
+      if(connected(pid,t.from,t.to))p.score+=t.pts; else p.score-=t.pts;});
+  });
+  renderAll();
+  showResults();
+}
+
+/* ============================ RENDER ============================ */
+function miniBus(color){
+  return `<svg width="28" height="16" viewBox="0 0 28 16" style="vertical-align:middle">
+    <circle cx="8" cy="14" r="2.2" fill="#161616"/><circle cx="20" cy="14" r="2.2" fill="#161616"/>
+    <rect x="1" y="2" width="26" height="11" rx="3.5" fill="${color}" stroke="#00000066"/>
+    <rect x="3.5" y="3.5" width="19" height="4.6" rx="2" fill="#dff1ff" opacity="0.9"/>
+    <circle cx="25" cy="9.5" r="1.2" fill="#ffe79a"/></svg>`;
+}
+// arte da carta: um ônibus de frente desenhado em SVG, na cor da carta.
+// se existir um arquivo cartas/<cor>.png, ele é usado por cima automaticamente.
+let _cid=0;
+function cardArt(color){
+  const wild = color==="curinga";
+  const id = "wild"+(++_cid);
+  const body = wild ? `url(#${id})` : HEX[color];
+  const bgTint = color==="branco" ? '#dcdcdc' : (wild?`url(#${id})`:HEX[color]);
+  const defs = wild ? `<defs><linearGradient id="${id}" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#e23b3b"/><stop offset=".3" stop-color="#f2c83f"/>
+      <stop offset=".55" stop-color="#3fae5a"/><stop offset=".8" stop-color="#2f7fd4"/>
+      <stop offset="1" stop-color="#8e44ad"/></linearGradient></defs>` : "";
+  return `<svg class="cardart" viewBox="0 0 100 140" preserveAspectRatio="none">${defs}
+    <rect x="0" y="0" width="100" height="140" rx="10" fill="#fff"/>
+    <rect x="0" y="0" width="100" height="140" rx="10" fill="${bgTint}" opacity="${wild?0.25:0.16}"/>
+    <rect x="0" y="121" width="100" height="19" fill="#00000026"/>
+    <ellipse cx="33" cy="121" rx="11" ry="11" fill="#161616"/><ellipse cx="67" cy="121" rx="11" ry="11" fill="#161616"/>
+    <circle cx="33" cy="121" r="4.3" fill="#555"/><circle cx="67" cy="121" r="4.3" fill="#555"/>
+    <rect x="16" y="22" width="68" height="92" rx="15" fill="${body}" stroke="#00000055" stroke-width="2"/>
+    <rect x="16" y="22" width="68" height="22" rx="13" fill="#ffffff" opacity="0.18"/>
+    <rect x="28" y="29" width="44" height="11" rx="3" fill="#1c1c1c"/>
+    <rect x="31" y="31.5" width="38" height="6" rx="2" fill="#ffd34d"/>
+    <rect x="23" y="47" width="54" height="27" rx="7" fill="#dff1ff" stroke="#00000033" stroke-width="1.5"/>
+    <line x1="50" y1="47" x2="50" y2="74" stroke="#00000030" stroke-width="1.5"/>
+    <rect x="22" y="99" width="56" height="13" rx="4" fill="#00000030"/>
+    <circle cx="31" cy="105.5" r="4.2" fill="#fff3a8" stroke="#00000055"/><circle cx="69" cy="105.5" r="4.2" fill="#fff3a8" stroke="#00000055"/>
+    <rect x="9" y="54" width="8" height="4" rx="2" fill="#222"/><rect x="83" y="54" width="8" height="4" rx="2" fill="#222"/>
+  </svg>`;
+}
+// Quando você tiver as artes próprias, coloque os PNGs em cartas/<cor>.png
+// e mude USE_CARD_IMAGES para true. Sem isso, usa o ônibus desenhado em SVG.
+const USE_CARD_IMAGES = false;
+function cardInner(color){
+  return cardArt(color)+(USE_CARD_IMAGES
+    ? `<img class="cardimg" src="cartas/${color}.png" alt="" onerror="this.remove()">` : "");
+}
+function log(msg,color){
+  if(!S.logLines)S.logLines=[];
+  S.logLines.push({msg,color:color||"#dfeaf2"});
+  if(S.logLines.length>60)S.logLines.shift();
+  renderLog();
+}
+function renderLog(){
+  const l=document.getElementById("log");if(!l||!S.logLines)return;
+  l.innerHTML="";
+  [...S.logLines].reverse().forEach(e=>{
+    const d=document.createElement("div");
+    d.innerHTML=`<span style="color:${e.color}">●</span> ${e.msg}`;
+    l.appendChild(d);
+  });
+}
+
+/* ===================== IA — oponente local (sem tokens/API) ===================== */
+let AI_ACTING=false;
+function totalCards(p){return Object.values(p.cards).reduce((a,b)=>a+b,0);}
+function maybeAI(){ if(!S.over && S.aiPlayers && S.aiPlayers[S.current]) setTimeout(aiTurn,800); }
+
+// menor caminho (Dijkstra) usando rotas livres ou já minhas; evita as do oponente
+function aiShortestPath(pid,from,to){
+  const dist={},prev={},prevR={};
+  Object.keys(CITIES).forEach(c=>dist[c]=Infinity);
+  dist[from]=0; const pq=[[0,from]];
+  while(pq.length){
+    pq.sort((a,b)=>a[0]-b[0]); const [d,u]=pq.shift();
+    if(d>dist[u]) continue;
+    ROUTES.forEach(r=>{
+      const v=r.a===u?r.b:(r.b===u?r.a:null); if(!v) return;
+      if(r.owner!=null && r.owner!==pid) return;          // bloqueada pelo oponente
+      const w=(r.owner===pid?0:r.len)+0.1;
+      if(dist[u]+w<dist[v]){dist[v]=dist[u]+w;prev[v]=u;prevR[v]=r.id;pq.push([dist[v],v]);}
+    });
+  }
+  if(dist[to]===Infinity) return [];
+  const ids=[]; let cur=to;
+  while(cur!==from && prev[cur]!=null){ if(ROUTES[prevR[cur]].owner==null) ids.push(prevR[cur]); cur=prev[cur]; }
+  return ids;
+}
+// rotas que a IA quer (estão no caminho dos seus bilhetes ainda não cumpridos)
+function aiDesired(pid){
+  const p=S.players[pid], want=new Set();
+  p.tickets.forEach(id=>{const t=TICKETS[id];
+    if(connected(pid,t.from,t.to)) return;
+    aiShortestPath(pid,t.from,t.to).forEach(rid=>want.add(rid));});
+  return want;
+}
+function aiBestOption(p,r){
+  const opts=payOptions(p,r); if(!opts.length) return null;
+  opts.sort((a,b)=>a.useLoco-b.useLoco); return opts[0];   // gasta menos curingas
+}
+function aiTurn(){
+  if(S.over || !(S.aiPlayers && S.aiPlayers[S.current])) return;
+  AI_ACTING=true;
+  try{
+    const pid=S.current, p=S.players[pid];
+    const desired=aiDesired(pid);
+    let best=null,bestOpt=null,bestScore=-1;
+    ROUTES.forEach(r=>{
+      if(r.owner!=null || p.buses<r.len) return;
+      const opt=aiBestOption(p,r); if(!opt) return;
+      const score=LEN_PTS[r.len] + (desired.has(r.id)?20:0) - opt.useLoco*0.5;
+      if(score>bestScore){bestScore=score;best=r;bestOpt=opt;}
+    });
+    const hand=totalCards(p);
+    // conquista se a rota ajuda um bilhete, ou se a mão está cheia (pra pontuar)
+    if(best && (desired.has(best.id) || hand>=8)){ payRoute(best,bestOpt); return; }
+    aiDrawTwo(pid,desired);
+  } finally { AI_ACTING=false; }
+}
+function aiDrawTwo(pid,desired){
+  const need={}; desired.forEach(rid=>{const c=ROUTES[rid].color; if(c!=="cinza")need[c]=1;});
+  for(let n=0;n<2;n++){
+    if(S.over || S.current!==pid) return;
+    let i=S.market.findIndex(c=>c==="curinga");
+    if(i>=0 && n===0){ takeMarket(i); return; }                    // curinga visível = turno todo
+    i=S.market.findIndex(c=>c && c!=="curinga" && need[c]);        // carta útil visível
+    if(i>=0) takeMarket(i); else takeDeck();
+  }
+  if(S.current===pid) endTurn();   // segurança (ex.: monte e descarte vazios)
+}
+
+function renderAll(){applyTheme(S.current);renderMap();renderSide();renderLog();saveState();}
+
+// desenha um ônibuzinho (vista lateral) centrado em cx,cy girado por ang
+function busSVG(cx,cy,ang,w,h,color,owned,rid){
+  const bw=w, bh=h;
+  const wheelR=Math.max(2.0,bh*0.17), wy=bh/2 - wheelR*0.15;
+  const winY=-bh*0.30, winH=bh*0.36, pad=bw*0.10;
+  const winLeft=-bw/2+pad, winRight=bw/2-bw*0.22, span=Math.max(2,winRight-winLeft);
+  const nWin=Math.max(2,Math.round(bw/9));
+  let windows=`<rect x="${winLeft.toFixed(1)}" y="${winY.toFixed(1)}" width="${span.toFixed(1)}" height="${winH.toFixed(1)}" rx="${(winH*0.3).toFixed(1)}" fill="#dff1ff" opacity="0.92"/>`;
+  for(let i=1;i<nWin;i++){const xx=winLeft+span*i/nWin;
+    windows+=`<line x1="${xx.toFixed(1)}" y1="${winY.toFixed(1)}" x2="${xx.toFixed(1)}" y2="${(winY+winH).toFixed(1)}" stroke="${color}" stroke-width="0.8" opacity="0.45"/>`;}
+  const stroke = owned ? "#ffffff" : "#00000066";
+  const sw = owned ? 1.8 : 1.1;
+  const filt = owned ? ' filter="url(#busshadow)"' : '';
+  return `<g class="rslot" data-id="${rid}" style="cursor:${owned===false?'pointer':'default'}" transform="translate(${cx.toFixed(1)},${cy.toFixed(1)}) rotate(${ang.toFixed(1)})"${filt}>
+    <rect x="${(-bw/2-2).toFixed(1)}" y="${(-bh/2-wheelR).toFixed(1)}" width="${(bw+4).toFixed(1)}" height="${(bh+wheelR*2).toFixed(1)}" fill="transparent"/>
+    <circle cx="${(-bw*0.26).toFixed(1)}" cy="${wy.toFixed(1)}" r="${wheelR.toFixed(1)}" fill="#161616"/>
+    <circle cx="${(bw*0.30).toFixed(1)}" cy="${wy.toFixed(1)}" r="${wheelR.toFixed(1)}" fill="#161616"/>
+    <rect x="${(-bw/2).toFixed(1)}" y="${(-bh/2).toFixed(1)}" width="${bw.toFixed(1)}" height="${bh.toFixed(1)}" rx="${(bh*0.34).toFixed(1)}" fill="${color}" stroke="${stroke}" stroke-width="${sw}"/>
+    <rect x="${(-bw/2).toFixed(1)}" y="${(-bh/2).toFixed(1)}" width="${bw.toFixed(1)}" height="${(bh*0.34).toFixed(1)}" rx="${(bh*0.3).toFixed(1)}" fill="#ffffff" opacity="0.20"/>
+    ${windows}
+    <circle cx="${(bw/2-bw*0.05).toFixed(1)}" cy="${(bh*0.12).toFixed(1)}" r="${Math.max(1.2,bh*0.1).toFixed(1)}" fill="#ffe79a"/>
+  </g>`;
+}
+
+// cenário do Rio: mar, baía, praias, lagoa, morros, Cristo e Pão de Açúcar
+function rioBackground(){
+  const coast = "M 1140,512 C 1020,540 980,505 900,520 C 820,532 770,500 700,524 "
+    + "C 640,544 600,506 470,540 C 380,562 320,498 250,520 C 160,544 60,500 -140,548";
+  // morros (cx, baseY, largura, altura)
+  const hills = [[600,418,30,30],[648,408,26,26],[690,420,34,28],[560,400,24,22],
+                 [410,352,30,26],[455,366,24,20],[805,486,26,22],[300,300,26,22],[210,250,22,18]];
+  let morros="";
+  hills.forEach(([x,y,w,h])=>{
+    morros+=`<path d="M ${x-w},${y} Q ${x},${y-h} ${x+w},${y} Z" fill="#4d893c"/>`
+      +`<path d="M ${x-w},${y} Q ${x-w*0.3},${y-h*0.82} ${x+w*0.15},${y-h*0.5}" fill="none" stroke="#6cae57" stroke-width="2" stroke-linecap="round" opacity="0.7"/>`;
+  });
+  return `<g transform="translate(500,320) scale(1.25) translate(-500,-320)"><defs>
+    <linearGradient id="ocean" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2f86bd"/><stop offset="1" stop-color="#15567f"/></linearGradient>
+    <linearGradient id="land" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#77ae61"/><stop offset="1" stop-color="#5d9849"/></linearGradient>
+    <radialGradient id="vig" cx="50%" cy="46%" r="72%">
+      <stop offset="62%" stop-color="#000" stop-opacity="0"/><stop offset="100%" stop-color="#000" stop-opacity="0.3"/></radialGradient>
+  </defs>
+  <rect x="-140" y="-28" width="1280" height="656" fill="url(#land)"/>
+  <!-- Oceano Atlântico (sul) -->
+  <path d="${coast} L 1140,628 L -140,628 Z" fill="url(#ocean)"/>
+  <!-- Baía de Guanabara (leste) -->
+  <path d="M 1140,-28 L 1140,470 C 1040,470 970,430 945,360 C 922,300 945,235 885,210
+    C 945,150 1025,150 1010,60 C 1002,5 1080,-5 1140,-28 Z" fill="url(#ocean)"/>
+  <!-- Ilha do Governador (ilha na baía) -->
+  <ellipse cx="805" cy="124" rx="40" ry="20" fill="url(#land)" stroke="#3f7a4f" stroke-width="1.5"/>
+  <!-- praias (faixa de areia) -->
+  <path d="${coast}" fill="none" stroke="#ecd9a3" stroke-width="7" stroke-linecap="round" opacity="0.85"/>
+  <!-- Lagoa Rodrigo de Freitas -->
+  <ellipse cx="703" cy="450" rx="33" ry="19" fill="#54a9cf" stroke="#3a8fb2" stroke-width="1.5"/>
+  ${morros}
+  <!-- Corcovado + Cristo Redentor -->
+  <path d="M 595,442 L 615,396 L 635,442 Z" fill="#4a833b"/>
+  <line x1="615" y1="397" x2="615" y2="381" stroke="#e7e1d6" stroke-width="3" stroke-linecap="round"/>
+  <line x1="606" y1="388" x2="624" y2="388" stroke="#e7e1d6" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="615" cy="380" r="2" fill="#e7e1d6"/>
+  <!-- Pão de Açúcar (Urca + Pão) -->
+  <path d="M 860,474 Q 869,446 879,474 Z" fill="#8d8275"/>
+  <path d="M 879,476 Q 893,434 908,476 Z" fill="#9a8e80"/>
+  <rect x="-140" y="-28" width="1280" height="656" fill="url(#vig)"/></g>`;
+}
+
+function renderMap(){
+  const svg=document.getElementById("map");
+  let out=rioBackground()+`<defs><filter id="busshadow" x="-40%" y="-40%" width="180%" height="180%">
+    <feDropShadow dx="0" dy="1.4" stdDeviation="1.3" flood-color="#000" flood-opacity="0.5"/></filter></defs>`;
+  // agrupa pistas paralelas (mesmo par de bairros) para desenhá-las lado a lado
+  const groups={};
+  ROUTES.forEach(r=>{const k=[r.a,r.b].sort().join("|");(groups[k]=groups[k]||[]).push(r.id);});
+  // rotas: faixas RETAS, paralelas deslocadas lateralmente, com folga perto do bairro
+  ROUTES.forEach(r=>{
+    const P0=CITIES[r.a], P1=CITIES[r.b];
+    const dx=P1[0]-P0[0], dy=P1[1]-P0[1], dist=Math.hypot(dx,dy);
+    const ux=dx/dist, uy=dy/dist, perpx=-uy, perpy=ux;
+    const ang=Math.atan2(dy,dx)*180/Math.PI;
+    const g=groups[[r.a,r.b].sort().join("|")], idx=g.indexOf(r.id), n=g.length;
+    const off=(idx-(n-1)/2)*(n>1?16:0);            // desloca pistas paralelas (reto)
+    const gap=Math.min(18,dist*0.30);              // folga em cada ponta (perto do bairro)
+    const usable=dist-2*gap, slot=usable/r.len;
+    const owned = r.owner!==null;
+    for(let i=0;i<r.len;i++){
+      const along=gap+slot*(i+0.5);
+      const cx=P0[0]+ux*along+perpx*off, cy=P0[1]+uy*along+perpy*off;
+      if(owned){
+        const w=Math.min(slot*0.76,34),h=14;
+        out+=busSVG(cx,cy,ang,w,h,S.players[r.owner].color,true,r.id);
+      }else{
+        const w=Math.min(slot*0.84,38),h=8;
+        const stroke = r.color==="cinza" ? "#6f6a60" : "#00000066";
+        out+=`<g class="rslot" data-id="${r.id}" style="cursor:pointer" transform="translate(${cx.toFixed(1)},${cy.toFixed(1)}) rotate(${ang.toFixed(1)})">
+          <rect x="${(-w/2-2).toFixed(1)}" y="-8" width="${(w+4).toFixed(1)}" height="16" fill="transparent"/>
+          <rect x="${(-w/2-1.3).toFixed(1)}" y="${(-h/2-1.3).toFixed(1)}" width="${(w+2.6).toFixed(1)}" height="${(h+2.6)}" rx="${((h+2.6)/2).toFixed(1)}" fill="#0a1c14" opacity="0.5"/>
+          <rect x="${(-w/2).toFixed(1)}" y="${(-h/2).toFixed(1)}" width="${w.toFixed(1)}" height="${h}" rx="${(h/2).toFixed(1)}" fill="${HEX[r.color]}" stroke="${stroke}" stroke-width="1"/>
+        </g>`;
+      }
+    }
+  });
+  // nós
+  for(const [name,[x,y]] of Object.entries(CITIES)){
+    out+=`<circle class="nodecircle" cx="${x}" cy="${y}" r="7" fill="#fff" stroke="${TH.strokeink}" stroke-width="2"/>`;
+    const anchor = x>820?"end":"start", ox = x>820?-11:11;
+    out+=`<text class="citylabel" x="${x+ox}" y="${y+4}" text-anchor="${anchor}">${name}</text>`;
+  }
+  svg.innerHTML=out;
+  svg.querySelectorAll(".rslot").forEach(el=>{
+    el.onclick=()=>clickRoute(ROUTES[+el.dataset.id]);
+  });
+}
+
+function renderSide(){
+  const p=cur();
+  const td=document.getElementById("turnDot");
+  td.className="";td.style.cssText="background:transparent;width:auto;height:auto;border:none";
+  td.innerHTML=miniBus(p.color);
+  document.getElementById("turnName").textContent = S.over? "Fim de jogo" : `Vez de ${p.name}`;
+  document.getElementById("turnInfo").textContent = S.over? "" :
+    ((S.aiPlayers&&S.aiPlayers[S.current]) ? "🤖 jogando..." :
+     `🚌 ${p.buses} ônibus na garagem · ${S.lastRound?"⚠️ última rodada":"jogue 1 ação"}`);
+  document.getElementById("phase").textContent = S.over?"":(S.lastRound?"Última rodada":"Em andamento");
+
+  // mercado
+  const m=document.getElementById("market");m.innerHTML="";
+  S.market.forEach((c,i)=>{
+    const d=document.createElement("div");
+    if(c==null){d.className="mcard empty";}
+    else{d.className="mcard";
+      d.innerHTML=cardInner(c);
+      d.title=c;
+      d.onclick=()=>takeMarket(i);}
+    m.appendChild(d);
+  });
+  const deck=document.createElement("div");deck.className="deck";
+  deck.innerHTML=`MONTE<br>(${S.deck.length})`;deck.onclick=takeDeck;
+  m.appendChild(deck);
+
+  // mão (cartas com badge de quantidade)
+  const hand=document.getElementById("hand");hand.innerHTML="";
+  [...COLORS,"curinga"].forEach(c=>{
+    if(p.cards[c]>0){
+      const ch=document.createElement("div");
+      ch.className="hcard";ch.title=c;
+      ch.innerHTML=`<div class="clip">${cardInner(c)}</div><span class="cnt">${p.cards[c]}</span>`;
+      hand.appendChild(ch);
+    }
+  });
+  if(Object.values(p.cards).every(v=>v===0))hand.innerHTML='<span class="hint">Mão vazia</span>';
+
+  // bilhetes
+  const tk=document.getElementById("tickets");tk.innerHTML="";
+  p.tickets.forEach(id=>{const t=TICKETS[id];
+    const done=connected(S.current,t.from,t.to);
+    const d=document.createElement("div");
+    d.className="ticket "+(done?"ok":"no");
+    d.innerHTML=`<span>${t.from} → ${t.to}</span><span class="pts">${done?"✓":""} ${t.pts}</span>`;
+    tk.appendChild(d);});
+  if(p.tickets.length===0)tk.innerHTML='<span class="hint">Nenhum bilhete</span>';
+
+  // placar (cards de jogador)
+  const sc=document.getElementById("scores");sc.innerHTML="";
+  S.players.forEach((pl,pid)=>{
+    const d=document.createElement("div");
+    d.className="pcard"+(pid===S.current && !S.over?" active":"");
+    d.style.borderLeftColor=pl.color;
+    d.innerHTML=`
+      <div class="av">${miniBus(pl.color)}</div>
+      <div class="who"><b>${pl.name}${(S.aiPlayers&&S.aiPlayers[pid])?" 🤖":""}</b><small>🚌 ${pl.buses} ônibus</small></div>
+      <div class="pts" style="color:${pl.color}">${pl.score}</div>`;
+    sc.appendChild(d);});
+
+  // botões
+  document.getElementById("btnTickets").disabled = S.over || !!S.actionLocked;
+  document.getElementById("actHint").textContent =
+    S.actionLocked==="draw" ? "Você está comprando cartas. Pegue mais "+(2-S.drawnThisTurn)+"." : "";
+}
+
+/* ============================ MODAL ============================ */
+function modalEl(){return document.getElementById("modal");}
+function openModal(html){modalEl().innerHTML=html;document.getElementById("overlay").style.display="flex";}
+function closeModal(){document.getElementById("overlay").style.display="none";}
+function flashModal(msg){const m=modalEl();let w=m.querySelector(".warn");
+  if(!w){w=document.createElement("p");w.className="warn";w.style.color="#f2c83f";m.appendChild(w);}w.textContent=msg;}
+let hintTimer;
+function flashHint(msg){const h=document.getElementById("actHint");h.textContent="⚠️ "+msg;h.style.color="#f2c83f";
+  clearTimeout(hintTimer);hintTimer=setTimeout(()=>{h.textContent="";h.style.color="";renderSide();},2600);}
+
+function showResults(){
+  const sorted=[...S.players].sort((a,b)=>b.score-a.score);
+  const win=sorted[0];const tie=sorted[0].score===sorted[1].score;
+  let html=`<h3>🏁 Fim de jogo!</h3>`;
+  if(tie)html+=`<p><b>Empate em ${win.score} pts!</b></p>`;
+  else html+=`<p>🏆 <b>${win.name}</b> venceu com <b>${win.score} pts</b>!</p>`;
+  S.players.forEach(p=>{
+    const tdone=p.tickets.filter((id)=>connected(S.players.indexOf(p),TICKETS[id].from,TICKETS[id].to)).length;
+    html+=`<div class="resultline">${miniBus(p.color)}
+      ${p.name}: <b>${p.score} pts</b> <span class="badge">${tdone}/${p.tickets.length} bilhetes</span></div>`;
+  });
+  html+=`<button onclick="closeModal();chooseMode()">🔁 Jogar de novo</button>`;
+  openModal(html);
+}
+
+document.getElementById("btnNew").onclick=()=>chooseMode();
+init();
+</script>
+</body>
+</html>

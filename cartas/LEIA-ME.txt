@@ -1,0 +1,29 @@
+COMO USAR ARTE PRÓPRIA NAS CARTAS
+=================================
+
+Hoje as cartas usam um ônibus desenhado em SVG (no próprio código).
+Quando você quiser trocar por imagens suas (ilustrações ou fotos):
+
+1) Coloque os arquivos NESTA pasta (cartas/), com estes nomes exatos:
+     vermelho.png
+     laranja.png
+     amarelo.png
+     verde.png
+     azul.png
+     roxo.png
+     preto.png
+     branco.png
+     curinga.png
+
+   Dicas de formato:
+     - PNG (de preferência com fundo transparente)
+     - Proporção retrato ~5:7  (ex: 250 x 350 px)
+     - Até ~200 KB cada (pra carregar rápido)
+
+2) Abra o index.html e mude esta linha:
+        const USE_CARD_IMAGES = false;
+   para:
+        const USE_CARD_IMAGES = true;
+
+Pronto! O jogo passa a mostrar suas imagens. Se faltar algum arquivo,
+aquela carta volta a usar o ônibus desenhado em SVG automaticamente.
