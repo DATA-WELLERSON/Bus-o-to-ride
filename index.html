@@ -98,7 +98,7 @@
   .modal button{display:block;width:100%;margin-top:8px;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--btn);color:#fff;cursor:pointer;font-size:14px}
   .modal button:hover{background:var(--btnh)}
   .modal .cancel{background:transparent;border-color:#444;color:#aaa}
-  .citylabel{font-size:11px;fill:#fff;font-weight:600;paint-order:stroke;stroke:#000;stroke-width:3px;stroke-opacity:.55}
+  .citylabel{font-size:11px;fill:#fff;font-weight:600;paint-order:stroke;stroke:#000;stroke-width:2.5px;stroke-opacity:.45}
   .nodecircle{cursor:default}
   .resultline{font-size:14px;padding:3px 0}
   .badge{font-size:11px;background:var(--border);padding:2px 7px;border-radius:10px;color:#eaf2f8;margin-left:6px}
@@ -696,7 +696,9 @@ function rioBackground(){
                  [410,352,30,26],[455,366,24,20],[805,486,26,22],[300,300,26,22],[210,250,22,18]];
   let morros="";
   hills.forEach(([x,y,w,h])=>{
-    morros+=`<path d="M ${x-w},${y} Q ${x},${y-h} ${x+w},${y} Z" fill="#4d893c"/>`
+    morros+=`<ellipse cx="${x}" cy="${(y+1.5).toFixed(1)}" rx="${(w*1.12).toFixed(1)}" ry="${Math.max(3,h*0.18).toFixed(1)}" fill="#2f5b25" opacity="0.16"/>`
+      +`<path d="M ${(x-w*1.22).toFixed(1)},${y} Q ${x},${(y-h*1.08).toFixed(1)} ${(x+w*1.22).toFixed(1)},${y} Z" fill="#5a9e46" opacity="0.22"/>`
+      +`<path d="M ${x-w},${y} Q ${x},${y-h} ${x+w},${y} Z" fill="#4d893c"/>`
       +`<path d="M ${x-w},${y} Q ${x-w*0.3},${y-h*0.82} ${x+w*0.15},${y-h*0.5}" fill="none" stroke="#6cae57" stroke-width="2" stroke-linecap="round" opacity="0.7"/>`;
   });
   return `<g transform="translate(500,320) scale(1.25) translate(-500,-320)"><defs>
@@ -706,39 +708,69 @@ function rioBackground(){
       <stop offset="0" stop-color="#77ae61"/><stop offset="1" stop-color="#5d9849"/></linearGradient>
     <radialGradient id="vig" cx="50%" cy="46%" r="72%">
       <stop offset="62%" stop-color="#000" stop-opacity="0"/><stop offset="100%" stop-color="#000" stop-opacity="0.3"/></radialGradient>
+    <!-- variação tonal sutil do terreno -->
+    <radialGradient id="terrA" cx="28%" cy="32%" r="58%">
+      <stop offset="0" stop-color="#9ccb82" stop-opacity="0.5"/><stop offset="1" stop-color="#9ccb82" stop-opacity="0"/></radialGradient>
+    <radialGradient id="terrB" cx="72%" cy="58%" r="52%">
+      <stop offset="0" stop-color="#4f8a3d" stop-opacity="0.42"/><stop offset="1" stop-color="#4f8a3d" stop-opacity="0"/></radialGradient>
+    <radialGradient id="terrC" cx="52%" cy="86%" r="62%">
+      <stop offset="0" stop-color="#6aa84f" stop-opacity="0.3"/><stop offset="1" stop-color="#6aa84f" stop-opacity="0"/></radialGradient>
   </defs>
-  <rect x="-140" y="-28" width="1280" height="656" fill="url(#land)"/>
-  <!-- Oceano Atlântico (sul) -->
-  <path d="${coast} L 1140,628 L -140,628 Z" fill="url(#ocean)"/>
-  <!-- Baía de Guanabara (leste) -->
-  <path d="M 1140,-28 L 1140,470 C 1040,470 970,430 945,360 C 922,300 945,235 885,210
-    C 945,150 1025,150 1010,60 C 1002,5 1080,-5 1140,-28 Z" fill="url(#ocean)"/>
-  <!-- Ilha do Governador (ilha na baía) -->
-  <ellipse cx="805" cy="124" rx="40" ry="20" fill="url(#land)" stroke="#3f7a4f" stroke-width="1.5"/>
-  <!-- praias (faixa de areia) -->
-  <path d="${coast}" fill="none" stroke="#ecd9a3" stroke-width="7" stroke-linecap="round" opacity="0.85"/>
-  <!-- Lagoa Rodrigo de Freitas -->
-  <ellipse cx="703" cy="450" rx="33" ry="19" fill="#54a9cf" stroke="#3a8fb2" stroke-width="1.5"/>
-  ${morros}
-  <!-- Corcovado + Cristo Redentor -->
-  <path d="M 595,442 L 615,396 L 635,442 Z" fill="#4a833b"/>
-  <line x1="615" y1="397" x2="615" y2="381" stroke="#e7e1d6" stroke-width="3" stroke-linecap="round"/>
-  <line x1="606" y1="388" x2="624" y2="388" stroke="#e7e1d6" stroke-width="3" stroke-linecap="round"/>
-  <circle cx="615" cy="380" r="2" fill="#e7e1d6"/>
-  <!-- Pão de Açúcar (Urca + Pão) -->
-  <path d="M 860,474 Q 869,446 879,474 Z" fill="#8d8275"/>
-  <path d="M 879,476 Q 893,434 908,476 Z" fill="#9a8e80"/>
+  <!-- ===== terreno ===== -->
+  <g class="lyr-terrain">
+    <rect x="-140" y="-28" width="1280" height="656" fill="url(#land)"/>
+    <rect x="-140" y="-28" width="1280" height="656" fill="url(#terrA)"/>
+    <rect x="-140" y="-28" width="1280" height="656" fill="url(#terrB)"/>
+    <rect x="-140" y="-28" width="1280" height="656" fill="url(#terrC)"/>
+  </g>
+  <!-- ===== água ===== -->
+  <g class="lyr-water">
+    <!-- Oceano Atlântico (sul) -->
+    <path d="${coast} L 1140,628 L -140,628 Z" fill="url(#ocean)"/>
+    <!-- Baía de Guanabara (leste) -->
+    <path d="M 1140,-28 L 1140,470 C 1040,470 970,430 945,360 C 922,300 945,235 885,210
+      C 945,150 1025,150 1010,60 C 1002,5 1080,-5 1140,-28 Z" fill="url(#ocean)"/>
+    <!-- Ilha do Governador (ilha na baía) -->
+    <ellipse cx="805" cy="124" rx="40" ry="20" fill="url(#land)" stroke="#3f7a4f" stroke-width="1.5"/>
+    <!-- praias (faixa de areia) -->
+    <path d="${coast}" fill="none" stroke="#ecd9a3" stroke-width="7" stroke-linecap="round" opacity="0.85"/>
+    <!-- Lagoa Rodrigo de Freitas -->
+    <ellipse cx="703" cy="450" rx="33" ry="19" fill="#54a9cf" stroke="#3a8fb2" stroke-width="1.5"/>
+  </g>
+  <!-- ===== relevo/morros ===== -->
+  <g class="lyr-relief">
+    ${morros}
+    <!-- Corcovado + Cristo Redentor -->
+    <path d="M 595,442 L 615,396 L 635,442 Z" fill="#4a833b"/>
+    <line x1="615" y1="397" x2="615" y2="381" stroke="#e7e1d6" stroke-width="3" stroke-linecap="round"/>
+    <line x1="606" y1="388" x2="624" y2="388" stroke="#e7e1d6" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="615" cy="380" r="2" fill="#e7e1d6"/>
+    <!-- Pão de Açúcar (Urca + Pão) -->
+    <path d="M 860,474 Q 869,446 879,474 Z" fill="#8d8275"/>
+    <path d="M 879,476 Q 893,434 908,476 Z" fill="#9a8e80"/>
+  </g>
   <rect x="-140" y="-28" width="1280" height="656" fill="url(#vig)"/></g>`;
 }
 
 function renderMap(){
   const svg=document.getElementById("map");
-  let out=rioBackground()+`<defs><filter id="busshadow" x="-40%" y="-40%" width="180%" height="180%">
-    <feDropShadow dx="0" dy="1.4" stdDeviation="1.3" flood-color="#000" flood-opacity="0.5"/></filter></defs>`;
+  let out=rioBackground()+`<defs>
+    <filter id="busshadow" x="-40%" y="-40%" width="180%" height="180%">
+      <feDropShadow dx="0" dy="1.4" stdDeviation="1.3" flood-color="#000" flood-opacity="0.5"/></filter>
+    <filter id="routeShadow" x="-40%" y="-60%" width="180%" height="220%">
+      <feDropShadow dx="0" dy="1" stdDeviation="0.9" flood-color="#000" flood-opacity="0.35"/></filter>
+    <filter id="nodeShadow" x="-60%" y="-60%" width="220%" height="220%">
+      <feDropShadow dx="0" dy="1.2" stdDeviation="1.1" flood-color="#000" flood-opacity="0.4"/></filter>
+    <filter id="labelShadow" x="-20%" y="-40%" width="140%" height="180%">
+      <feDropShadow dx="0" dy="0.6" stdDeviation="0.5" flood-color="#000" flood-opacity="0.5"/></filter>
+    <radialGradient id="nodeFill" cx="38%" cy="34%" r="75%">
+      <stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#d9d9d9"/></radialGradient>
+  </defs>`;
   // agrupa pistas paralelas (mesmo par de bairros) para desenhá-las lado a lado
   const groups={};
   ROUTES.forEach(r=>{const k=[r.a,r.b].sort().join("|");(groups[k]=groups[k]||[]).push(r.id);});
   // rotas: faixas RETAS, paralelas deslocadas lateralmente, com folga perto do bairro
+  out+=`<g class="lyr-routes">`;
   ROUTES.forEach(r=>{
     const P0=CITIES[r.a], P1=CITIES[r.b];
     const dx=P1[0]-P0[0], dy=P1[1]-P0[1], dist=Math.hypot(dx,dy);
@@ -758,20 +790,23 @@ function renderMap(){
       }else{
         const w=Math.min(slot*0.84,38),h=8;
         const stroke = r.color==="cinza" ? "#6f6a60" : "#00000066";
-        out+=`<g class="rslot" data-id="${r.id}" style="cursor:pointer" transform="translate(${cx.toFixed(1)},${cy.toFixed(1)}) rotate(${ang.toFixed(1)})">
+        out+=`<g class="rslot" data-id="${r.id}" style="cursor:pointer" filter="url(#routeShadow)" transform="translate(${cx.toFixed(1)},${cy.toFixed(1)}) rotate(${ang.toFixed(1)})">
           <rect x="${(-w/2-2).toFixed(1)}" y="-8" width="${(w+4).toFixed(1)}" height="16" fill="transparent"/>
-          <rect x="${(-w/2-1.3).toFixed(1)}" y="${(-h/2-1.3).toFixed(1)}" width="${(w+2.6).toFixed(1)}" height="${(h+2.6)}" rx="${((h+2.6)/2).toFixed(1)}" fill="#0a1c14" opacity="0.5"/>
           <rect x="${(-w/2).toFixed(1)}" y="${(-h/2).toFixed(1)}" width="${w.toFixed(1)}" height="${h}" rx="${(h/2).toFixed(1)}" fill="${HEX[r.color]}" stroke="${stroke}" stroke-width="1"/>
         </g>`;
       }
     }
   });
-  // nós
+  out+=`</g>`;
+  // nós e labels (camadas separadas)
+  let nodesStr="", labelsStr="";
   for(const [name,[x,y]] of Object.entries(CITIES)){
-    out+=`<circle class="nodecircle" cx="${x}" cy="${y}" r="7" fill="#fff" stroke="${TH.strokeink}" stroke-width="2"/>`;
+    nodesStr+=`<circle class="nodecircle" cx="${x}" cy="${y}" r="7" fill="url(#nodeFill)" stroke="${TH.strokeink}" stroke-width="2"/>`;
     const anchor = x>820?"end":"start", ox = x>820?-11:11;
-    out+=`<text class="citylabel" x="${x+ox}" y="${y+4}" text-anchor="${anchor}">${name}</text>`;
+    labelsStr+=`<text class="citylabel" x="${x+ox}" y="${y+4}" text-anchor="${anchor}">${name}</text>`;
   }
+  out+=`<g class="lyr-nodes" filter="url(#nodeShadow)">${nodesStr}</g>`;
+  out+=`<g class="lyr-labels" filter="url(#labelShadow)">${labelsStr}</g>`;
   svg.innerHTML=out;
   svg.querySelectorAll(".rslot").forEach(el=>{
     el.onclick=()=>clickRoute(ROUTES[+el.dataset.id]);
